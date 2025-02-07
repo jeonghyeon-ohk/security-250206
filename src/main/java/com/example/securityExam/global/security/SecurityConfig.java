@@ -1,5 +1,7 @@
 package com.example.securityExam.global.security;
 
+import com.example.securityExam.global.dto.RsData;
+import com.example.securityExam.standard.util.Ut;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -22,9 +24,9 @@ public class SecurityConfig {
         http
                 .authorizeHttpRequests((authorizeHttpRequests) ->
                         authorizeHttpRequests
-                                .requestMatchers("/h2-console/**")// get이 아닌 post 등 다른 요청(로그인하면 post 됨) 처리를 위해 분리
+                                .requestMatchers("/h2-console/**")
                                 .permitAll()
-                                .requestMatchers(HttpMethod.GET,  "/api/*/posts/{id:\\d+}", "/api/*/posts", "/api/*/posts/{postId:\\d+}/comments")
+                                .requestMatchers(HttpMethod.GET, "/api/*/posts/{id:\\d+}", "/api/*/posts", "/api/*/posts/{postId:\\d+}/comments")
                                 .permitAll()
                                 .requestMatchers("/api/*/members/login", "/api/*/members/join")
                                 .permitAll()
@@ -35,7 +37,33 @@ public class SecurityConfig {
                         .addHeaderWriter(new XFrameOptionsHeaderWriter(
                                 XFrameOptionsHeaderWriter.XFrameOptionsMode.SAMEORIGIN)))
                 .csrf(csrf -> csrf.disable())
-                .addFilterBefore(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class) // Spring security 안에서 인증작업을 수행하는 클래스
+                .addFilterBefore(customAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .exceptionHandling(
+                        exceptionHandling -> exceptionHandling
+                                .authenticationEntryPoint(
+                                        (request, response, authException) -> {
+                                            response.setContentType("application/json;charset=UTF-8");
+                                            response.setStatus(401);
+                                            response.getWriter().write(
+                                                    Ut.Json.toString(
+                                                            new RsData("401-1", "잘못된 인증키입니다.")
+                                                    )
+                                            );
+                                        }
+                                )
+                                .accessDeniedHandler(
+                                        (request, response, authException) -> {
+                                            response.setContentType("application/json;charset=UTF-8");
+                                            response.setStatus(403);
+                                            response.getWriter().write(
+                                                    Ut.Json.toString(
+                                                            new RsData("403-1", "접근 권한이 없습니다.")
+                                                    )
+                                            );
+                                        }
+                                )
+
+                );
         ;
         return http.build();
     }
